@@ -11,6 +11,7 @@ import CoursesPage from './pages/Courses/index.jsx';
 import ClassesPage from './pages/Classes/index.jsx';
 import AttendancePage from './pages/Attendance/index.jsx';
 import TuitionPage from './pages/Tuition/index.jsx';
+import TuitionAdminPage from './pages/TuitionAdmin/index.jsx';
 import LoginPage from './pages/Login.jsx';
 
 // Protected route wrapper
@@ -34,6 +35,7 @@ const ProtectedLayout = () => {
           <Route path="/classes" element={<ClassesPage />} />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/tuition" element={<TuitionPage />} />
+          <Route path="/tuition-admin" element={<TuitionAdminPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

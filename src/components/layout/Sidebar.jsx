@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, CalendarDays,
-  ClipboardCheck, CreditCard, LogOut, GraduationCap,
+  ClipboardCheck, CreditCard, LogOut, GraduationCap, BadgeDollarSign,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore.js';
 import { getInitials, ROLE_LABEL } from '../../utils/helpers.js';
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { to: '/classes', icon: CalendarDays, label: 'Lớp học', section: 'main' },
   { to: '/attendance', icon: ClipboardCheck, label: 'Điểm danh', section: 'academic' },
   { to: '/tuition', icon: CreditCard, label: 'Học phí', section: 'academic' },
+  { to: '/tuition-admin', icon: BadgeDollarSign, label: 'Quản trị thu học phí', section: 'academic' },
 ];
 
 export default function Sidebar() {

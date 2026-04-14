@@ -53,4 +53,5 @@ export const tuitionService = {
   create: (data) => api.post('/tuition', data),
   updateStatus: (id, data) => api.patch(`/tuition/${id}/status`, data),
   getStats: () => api.get('/tuition/stats'),
+  getByStudent: (studentId) => api.get(`/tuition/student/${studentId}`),
 };

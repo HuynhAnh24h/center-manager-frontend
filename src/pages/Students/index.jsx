@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { UserPlus, Pencil, Trash2, Eye } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Eye, CreditCard, X, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Topbar from '../../components/layout/Topbar.jsx';
 import {
   Badge, Modal, Pagination, SearchInput,
   EmptyState, LoadingRows, ConfirmModal, PageHeader, FormRow,
 } from '../../components/common/index.jsx';
-import { studentService } from '../../services/index.js';
-import { formatDate, STATUS_STUDENT, debounce } from '../../utils/helpers.js';
+import { studentService, tuitionService } from '../../services/index.js';
+import { formatDate, formatCurrency, STATUS_STUDENT, STATUS_TUITION, debounce } from '../../utils/helpers.js';
 
 const EMPTY_FORM = {
   fullName: '', phone: '', email: '', gender: 'male',
@@ -22,10 +22,15 @@ export default function StudentsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // 'create' | 'edit' | 'detail' | 'delete'
+  const [modal, setModal] = useState(null);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  // Tuition state
+  const [tuitions, setTuitions] = useState([]);
+  const [tuitionSummary, setTuitionSummary] = useState(null);
+  const [tuitionLoading, setTuitionLoading] = useState(false);
 
   const fetchStudents = useCallback(async (p = page, s = search, st = statusFilter) => {
     setLoading(true);
@@ -55,6 +60,23 @@ export default function StudentsPage() {
   const openEdit = (s) => { setSelected(s); setForm({ ...s, dateOfBirth: s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : '' }); setModal('edit'); };
   const openDetail = (s) => { setSelected(s); setModal('detail'); };
   const openDelete = (s) => { setSelected(s); setModal('delete'); };
+
+  const openTuition = async (s) => {
+    setSelected(s);
+    setModal('tuition');
+    setTuitionLoading(true);
+    setTuitions([]);
+    setTuitionSummary(null);
+    try {
+      const { data } = await tuitionService.getByStudent(s._id);
+      setTuitions(data.data);
+      setTuitionSummary(data.summary);
+    } catch {
+      toast.error('Lỗi tải học phí');
+    } finally {
+      setTuitionLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!form.fullName.trim()) return toast.error('Vui lòng nhập họ tên');
@@ -89,6 +111,9 @@ export default function StudentsPage() {
 
   const F = (field) => (e) => setForm({ ...form, [field]: e.target.value });
 
+  const paidTuitions = tuitions.filter(t => t.status === 'paid');
+  const unpaidTuitions = tuitions.filter(t => ['pending', 'overdue', 'partial'].includes(t.status));
+
   return (
     <>
       <Topbar title="Quản lý học viên" subtitle={`${total} học viên trong hệ thống`} />
@@ -102,7 +127,6 @@ export default function StudentsPage() {
           }
         />
 
-        {/* Filters */}
         <div className="flex items-center gap-3 mb-4">
           <SearchInput value={search} onChange={handleSearch} placeholder="Tìm theo tên, mã, SĐT..." />
           <select className="form-control" style={{ width: 160 }} value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
@@ -113,7 +137,6 @@ export default function StudentsPage() {
           </select>
         </div>
 
-        {/* Table */}
         <div className="card">
           <div className="table-wrapper">
             <table>
@@ -160,6 +183,7 @@ export default function StudentsPage() {
                       <td>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openDetail(s)} title="Chi tiết"><Eye size={14} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openTuition(s)} title="Học phí" style={{ color: 'var(--gold-600)' }}><CreditCard size={14} /></button>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(s)} title="Sửa"><Pencil size={14} /></button>
                           <button className="btn btn-danger btn-icon btn-sm" onClick={() => openDelete(s)} title="Xóa"><Trash2 size={14} /></button>
                         </div>
@@ -277,6 +301,94 @@ export default function StudentsPage() {
             </div>
           )}
         </Modal>
+      )}
+
+      {/* Tuition Modal */}
+      {modal === 'tuition' && selected && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal" style={{ maxWidth: 780, width: '100%' }}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">Học phí — {selected.fullName}</h3>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>{selected.studentCode}</p>
+              </div>
+              <button className="btn btn-ghost btn-icon" onClick={() => setModal(null)}><X size={18} /></button>
+            </div>
+
+            <div className="modal-body">
+              {tuitionLoading ? (
+                <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>Đang tải...</div>
+              ) : (
+                <>
+                  {/* Summary cards */}
+                  {tuitionSummary && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+                      <div style={{ padding: '14px 16px', borderRadius: 10, background: 'var(--gold-50)', border: '1px solid var(--gold-200)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--gold-700)', marginBottom: 4 }}>Tổng học phí</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--gold-800)' }}>{formatCurrency(tuitionSummary.totalAmount)}</div>
+                      </div>
+                      <div style={{ padding: '14px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#166534', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle size={12} /> Đã đóng</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#16a34a' }}>{formatCurrency(tuitionSummary.paidAmount)}</div>
+                        <div style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>
+                          {tuitionSummary.totalAmount > 0 ? Math.round(tuitionSummary.paidAmount / tuitionSummary.totalAmount * 100) : 0}% tổng học phí
+                        </div>
+                      </div>
+                      <div style={{ padding: '14px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#9a3412', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={12} /> Chưa đóng</div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#ea580c' }}>{formatCurrency(tuitionSummary.unpaidAmount)}</div>
+                        <div style={{ fontSize: 11, color: '#9a3412', marginTop: 2 }}>
+                          {tuitionSummary.totalAmount > 0 ? Math.round(tuitionSummary.unpaidAmount / tuitionSummary.totalAmount * 100) : 0}% tổng học phí
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Progress bar */}
+                  {tuitionSummary && tuitionSummary.totalAmount > 0 && (
+                    <div style={{ marginBottom: 20 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                        <span>Tiến độ đóng học phí</span>
+                        <span style={{ fontWeight: 700 }}>{formatCurrency(tuitionSummary.paidAmount)} / {formatCurrency(tuitionSummary.totalAmount)}</span>
+                      </div>
+                      <div style={{ height: 8, background: 'var(--gray-100)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(100, Math.round(tuitionSummary.paidAmount / tuitionSummary.totalAmount * 100))}%`, background: 'linear-gradient(90deg, #16a34a, #22c55e)', borderRadius: 8, transition: 'width 0.5s ease' }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {tuitions.length === 0 ? (
+                    <EmptyState message="Chưa có phiếu học phí nào" />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {tuitions.map((t) => (
+                        <div key={t._id} style={{ padding: '12px 14px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--white)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{t.class?.className || '—'}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                              {t.course?.courseName} · Hạn: {formatDate(t.dueDate)}
+                              {t.paidDate && ` · Đã đóng: ${formatDate(t.paidDate)}`}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{formatCurrency(t.finalAmount)}</div>
+                            {t.discount > 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{formatCurrency(t.amount)}</div>}
+                          </div>
+                          <div style={{ flexShrink: 0 }}>
+                            <Badge {...(STATUS_TUITION[t.status] || { label: t.status, cls: 'badge-gray' })} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setModal(null)}>Đóng</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirm */}
