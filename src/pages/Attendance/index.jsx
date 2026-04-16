@@ -1,17 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   ClipboardCheck, CheckCircle2, XCircle, Clock, FileQuestion,
-  ChevronDown, ChevronLeft, CalendarDays, Users, Sun, Sunset, Moon,
+  ChevronDown, ChevronLeft, CalendarDays, Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Topbar from '../../components/layout/Topbar.jsx';
 import { Badge, Modal, EmptyState } from '../../components/common/index.jsx';
+import { ShiftBadge, SHIFT_CONFIG } from '../../components/common/ShiftBadge.jsx';
 import { attendanceService, classService } from '../../services/index.js';
 import { formatDate, STATUS_ATTENDANCE, SHIFT_LABEL, STATUS_CLASS, DAY_LABEL } from '../../utils/helpers.js';
 
-const SHIFT_ICON  = { morning: <Sun size={13} />, afternoon: <Sunset size={13} />, evening: <Moon size={13} /> };
-const SHIFT_COLOR = { morning: '#fef3c7', afternoon: '#ffe4e6', evening: '#e0e7ff' };
-const SHIFT_TEXT  = { morning: '#92400e', afternoon: '#9f1239', evening: '#3730a3' };
+// Shift config is now in ShiftBadge.jsx (shared)
 
 const STATUS_ICONS = {
   present: <CheckCircle2 size={15} color="#10b981" />,
@@ -194,8 +193,8 @@ export default function AttendancePage() {
                       {/* Schedule chips */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
                         {(c.schedule || []).map((s, i) => (
-                          <span key={i} style={{ background: SHIFT_COLOR[s.shift], color: SHIFT_TEXT[s.shift], padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                            {SHIFT_ICON[s.shift]} {DAY_LABEL[s.dayOfWeek]} {s.startTime}–{s.endTime}
+                          <span key={i} style={{ background: SHIFT_CONFIG[s.shift]?.bg || '#f3f4f6', color: SHIFT_CONFIG[s.shift]?.text || '#374151', padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {SHIFT_CONFIG[s.shift]?.Icon && React.createElement(SHIFT_CONFIG[s.shift].Icon, { size: 11 })} {DAY_LABEL[s.dayOfWeek]} {s.startTime}–{s.endTime}
                           </span>
                         ))}
                       </div>
@@ -243,8 +242,8 @@ export default function AttendancePage() {
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                     {(activeClass.schedule || []).map((s, i) => (
-                      <span key={i} style={{ background: SHIFT_COLOR[s.shift], color: SHIFT_TEXT[s.shift], padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        {SHIFT_ICON[s.shift]} {DAY_LABEL[s.dayOfWeek]} {s.startTime}–{s.endTime}{s.room ? ` · ${s.room}` : ''}
+                      <span key={i} style={{ background: SHIFT_CONFIG[s.shift]?.bg || '#f3f4f6', color: SHIFT_CONFIG[s.shift]?.text || '#374151', padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {SHIFT_CONFIG[s.shift]?.Icon && React.createElement(SHIFT_CONFIG[s.shift].Icon, { size: 12 })} {DAY_LABEL[s.dayOfWeek]} {s.startTime}–{s.endTime}{s.room ? ` · ${s.room}` : ''}
                       </span>
                     ))}
                   </div>
@@ -325,9 +324,7 @@ export default function AttendancePage() {
                         <div style={{ fontWeight: 600, fontSize: 14 }}>Buổi {session.sessionNumber} — {formatDate(session.sessionDate)}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
                           {session.shift && (
-                            <span style={{ background: SHIFT_COLOR[session.shift], color: SHIFT_TEXT[session.shift], padding: '1px 7px', borderRadius: 8, fontSize: 11, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                              {SHIFT_ICON[session.shift]} {SHIFT_LABEL[session.shift]}
-                            </span>
+                            <ShiftBadge shift={session.shift} />
                           )}
                           <span>{presentCount}/{totalCount} có mặt</span>
                           {session.takenBy && <span>· {session.takenBy.name}</span>}
